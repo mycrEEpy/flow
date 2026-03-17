@@ -25,12 +25,14 @@ double := flow.Task[int, int](func(in <-chan int, out chan<- int) {
 })
 ```
 
+The generic type definition of `Task` can be inferred most of the time as seen in the next examples. 
+
 ### Concurrent
 
 Fan out a task across multiple goroutines:
 
 ```go
-heavy := flow.Concurrent(flow.Task[int, int](func(in <-chan int, out chan<- int) {
+heavy := flow.Concurrent(func(in <-chan int, out chan<- int) {
     defer close(out)
 	for v := range in {
         time.Sleep(time.Second)
@@ -47,14 +49,14 @@ When all tasks share the same type, use `Chain`:
 
 ```go
 pipeline := flow.Chain(
-    flow.Task[int, int](func(in <-chan int, out chan<- int) {
+    func(in <-chan int, out chan<- int) {
         defer close(out)
         for v := range in { out <- v + 1 }
-    }),
-    flow.Task[int, int](func(in <-chan int, out chan<- int) {
+    },
+    func(in <-chan int, out chan<- int) {
         defer close(out)
 		for v := range in { out <- v * 2 }
-    }),
+    },
 )
 
 results := flow.FromValues(pipeline, 10) // [22]
