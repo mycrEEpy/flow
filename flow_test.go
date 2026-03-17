@@ -37,13 +37,13 @@ var (
 	}
 )
 
-func TestDo(t *testing.T) {
+func TestSimpleTask(t *testing.T) {
 	results := flow.FromValues(double, 1, 2, 3, 4, 5)
 
 	assert.Equal(t, []int{2, 4, 6, 8, 10}, results)
 }
 
-func TestConcurrent(t *testing.T) {
+func TestConcurrentTask(t *testing.T) {
 	results := flow.FromValues(flow.Concurrent(double, 4), 1, 2, 3, 4, 5)
 
 	assert.Contains(t, results, 2)
@@ -69,7 +69,7 @@ func TestChain(t *testing.T) {
 	assert.Equal(t, []int{36, 72, 108, 144, 180}, result)
 }
 
-func TestRunWithProducer(t *testing.T) {
+func TestFromChannel(t *testing.T) {
 	ch := make(chan int)
 
 	go func() {
