@@ -10,7 +10,7 @@ type Task[In, Out any] func(in <-chan In, out chan<- Out) error
 
 // Concurrent runs n goroutines of the given task sharing the same in/out channels.
 // If any worker returns an error, the first non-nil error is returned.
-func Concurrent[In, Out any](t Task[In, Out], n int) Task[In, Out] {
+func Concurrent[In, Out any](n int, t Task[In, Out]) Task[In, Out] {
 	return func(in <-chan In, out chan<- Out) error {
 		var (
 			wg   sync.WaitGroup

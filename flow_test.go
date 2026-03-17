@@ -51,7 +51,7 @@ func TestSimpleTask(t *testing.T) {
 }
 
 func TestConcurrentTask(t *testing.T) {
-	results, err := flow.FromValues(flow.Concurrent(double, 4), 1, 2, 3, 4, 5)
+	results, err := flow.FromValues(flow.Concurrent(4, double), 1, 2, 3, 4, 5)
 
 	require.NoError(t, err)
 	assert.Contains(t, results, 2)

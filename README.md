@@ -39,14 +39,14 @@ The generic type definition of `Task` can be inferred most of the time as seen i
 Fan out a task across multiple goroutines:
 
 ```go
-heavy := flow.Concurrent(func(in <-chan int, out chan<- int) error {
+heavy := flow.Concurrent(4, func(in <-chan int, out chan<- int) error {
     defer close(out)
 	for v := range in {
         time.Sleep(time.Second)
         out <- v * 2
     }
     return nil
-}), 4)
+})
 
 results, err := flow.FromValues(heavy, 1, 2, 3, 4) // processed by 4 workers concurrently
 ```
