@@ -18,10 +18,10 @@ Tasks must close `out` when done.
 
 ```go
 double := flow.Task[int, int](func(in <-chan int, out chan<- int) {
-    for v := range in {
+    defer close(out)
+	for v := range in {
         out <- v * 2
     }
-    close(out)
 })
 ```
 
@@ -31,11 +31,11 @@ Fan out a task across multiple goroutines:
 
 ```go
 heavy := flow.Concurrent(flow.Task[int, int](func(in <-chan int, out chan<- int) {
-    for v := range in {
+    defer close(out)
+	for v := range in {
         time.Sleep(time.Second)
         out <- v * 2
     }
-    close(out)
 }), 4)
 
 results := flow.FromValues(heavy, 1, 2, 3, 4) // processed by 4 workers concurrently
@@ -48,12 +48,12 @@ When all tasks share the same type, use `Chain`:
 ```go
 pipeline := flow.Chain(
     flow.Task[int, int](func(in <-chan int, out chan<- int) {
+        defer close(out)
         for v := range in { out <- v + 1 }
-        close(out)
     }),
     flow.Task[int, int](func(in <-chan int, out chan<- int) {
-        for v := range in { out <- v * 2 }
-        close(out)
+        defer close(out)
+		for v := range in { out <- v * 2 }
     }),
 )
 
@@ -66,13 +66,13 @@ Use `Pipe` to connect tasks with different input/output types:
 
 ```go
 double := func(in <-chan int, out chan<- int) {
-    for v := range in { out <- v * 2 }
-    close(out)
+    defer close(out)
+	for v := range in { out <- v * 2 }
 }))
 
 toString := func(in <-chan int, out chan<- string) {
-    for v := range in { out <- fmt.Sprintf("%d", v) }
-    close(out)
+    defer close(out)
+	for v := range in { out <- fmt.Sprintf("%d", v) }
 }))
 
 pipeline := flow.Pipe(double, toString)
@@ -91,8 +91,8 @@ Use `FromChannel` when inputs come from a channel instead of a slice:
 
 ```go
 double := func(in <-chan int, out chan<- int) {
-    for v := range in { out <- v * 2 }
-    close(out)
+    defer close(out)
+	for v := range in { out <- v * 2 }
 }))
 
 ch := make(chan int)
