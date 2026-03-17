@@ -93,6 +93,12 @@ func Chain[T any](tasks ...Task[T, T]) Task[T, T] {
 // FromValues starts the task with the given input values and returns the collected output.
 // Returns a non-nil error if the task fails.
 func FromValues[In, Out any](t Task[In, Out], input ...In) ([]Out, error) {
+	return FromSlice(t, input)
+}
+
+// FromSlice starts the task with the given input slice and returns the collected output.
+// Returns a non-nil error if the task fails.
+func FromSlice[In, Out any](t Task[In, Out], input []In) ([]Out, error) {
 	ch := make(chan In)
 
 	go func() {

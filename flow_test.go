@@ -95,6 +95,13 @@ func TestFromChannel(t *testing.T) {
 	assert.Equal(t, []int{0, 2, 4, 6, 8}, result)
 }
 
+func TestFromSlice(t *testing.T) {
+	result, err := flow.FromSlice(double, []int{1, 2, 3, 4, 5})
+
+	require.NoError(t, err)
+	assert.Equal(t, []int{2, 4, 6, 8, 10}, result)
+}
+
 func TestTaskError(t *testing.T) {
 	errBoom := errors.New("boom")
 
