@@ -11,13 +11,34 @@ go get github.com/mycreepy/flow
 
 ## Usage
 
-### Basic pipeline
+### Task
 
-Provide a `func(In) Out` and the package does the rest:
+A `Task` is the core building block — a function that reads from an input channel and writes to an output channel.
+Tasks must close `out` when done.
 
 ```go
-double := flow.Func(func(v int) int { return v * 2 })
-results := flow.Run(double, 1, 2, 3) // [2, 4, 6]
+double := flow.Task[int, int](func(in <-chan int, out chan<- int) {
+    for v := range in {
+        out <- v * 2
+    }
+    close(out)
+})
+```
+
+### Concurrent
+
+Fan out a task across multiple goroutines:
+
+```go
+heavy := flow.Concurrent(flow.Task[int, int](func(in <-chan int, out chan<- int) {
+    for v := range in {
+        time.Sleep(time.Second)
+        out <- v * 2
+    }
+    close(out)
+}), 4)
+
+results := flow.FromValues(heavy, 1, 2, 3, 4) // processed by 4 workers concurrently
 ```
 
 ### Chaining same types
@@ -26,11 +47,17 @@ When all tasks share the same type, use `Chain`:
 
 ```go
 pipeline := flow.Chain(
-    flow.Func(func(v int) int { return v + 1 }),
-    flow.Func(func(v int) int { return v * 2 }),
-    flow.Func(func(v int) int { return v - 3 }),
+    flow.Task[int, int](func(in <-chan int, out chan<- int) {
+        for v := range in { out <- v + 1 }
+        close(out)
+    }),
+    flow.Task[int, int](func(in <-chan int, out chan<- int) {
+        for v := range in { out <- v * 2 }
+        close(out)
+    }),
 )
-results := flow.Run(pipeline, 10) // [19]
+
+results := flow.FromValues(pipeline, 10) // [22]
 ```
 
 ### Chaining different types
@@ -38,11 +65,18 @@ results := flow.Run(pipeline, 10) // [19]
 Use `Pipe` to connect tasks with different input/output types:
 
 ```go
-double := flow.Func(func(v int) int { return v * 2 })
-toString := flow.Func(func(v int) string { return fmt.Sprintf("%d", v) })
+double := func(in <-chan int, out chan<- int) {
+    for v := range in { out <- v * 2 }
+    close(out)
+}))
+
+toString := func(in <-chan int, out chan<- string) {
+    for v := range in { out <- fmt.Sprintf("%d", v) }
+    close(out)
+}))
 
 pipeline := flow.Pipe(double, toString)
-results := flow.Run(pipeline, 1, 2, 3) // ["2", "4", "6"]
+results := flow.FromValues(pipeline, 1, 2, 3) // ["2", "4", "6"]
 ```
 
 For longer chains, nest `Pipe` calls:
@@ -53,34 +87,21 @@ pipeline := flow.Pipe(flow.Pipe(parse, transform), encode)
 
 ### Custom producer
 
-Use `RunWithProducer` when inputs come from a channel instead of a slice:
+Use `FromChannel` when inputs come from a channel instead of a slice:
 
 ```go
-double := flow.Func(func(v int) int { return v * 2 })
+double := func(in <-chan int, out chan<- int) {
+    for v := range in { out <- v * 2 }
+    close(out)
+}))
 
-results := flow.RunWithProducer(double, func() <-chan int {
-    ch := make(chan int)
-    go func() {
-        defer close(ch)
-        for i := range 5 {
-            ch <- i
-        }
-    }()
-    return ch
-}) // [0, 2, 4, 6, 8]
+ch := make(chan int)
+go func() {
+    defer close(ch)
+    for i := range 5 {
+        ch <- i
+    }
+}()
+
+results := flow.FromChannel(double, ch) // [0, 2, 4, 6, 8]
 ```
-
-### Concurrent workers
-
-Fan out a function across multiple goroutines:
-
-```go
-heavy := flow.ConcurrentFunc(func(v int) int {
-    time.Sleep(time.Second)
-    return v * 2
-}, 4)
-
-results := flow.Run(heavy, 1, 2, 3, 4) // processed by 4 workers concurrently
-```
-
-Concurrent tasks can be composed with `Pipe` and `Chain` like any other task.

@@ -3,36 +3,26 @@ package flow
 import "sync"
 
 // Task processes values from in and sends results to out.
+// Must close out when done.
 type Task[In, Out any] func(in <-chan In, out chan<- Out)
 
-// TaskFunc is a function that converts a single value to a result.
-type TaskFunc[In, Out any] func(In) Out
-
-// Producer is a function that returns a channel of values to feed into a pipeline.
-type Producer[T any] func() <-chan T
-
-// Func creates a Task from a TaskFunc.
-func Func[In, Out any](fn TaskFunc[In, Out]) Task[In, Out] {
-	return func(in <-chan In, out chan<- Out) {
-		for v := range in {
-			out <- fn(v)
-		}
-
-		close(out)
-	}
-}
-
-// ConcurrentFunc creates a Task from a TaskFunc that runs n goroutines applying fn concurrently.
-func ConcurrentFunc[In, Out any](fn TaskFunc[In, Out], n int) Task[In, Out] {
+// Concurrent runs n goroutines of the given task sharing the same in/out channels.
+func Concurrent[In, Out any](t Task[In, Out], n int) Task[In, Out] {
 	return func(in <-chan In, out chan<- Out) {
 		var wg sync.WaitGroup
 		wg.Add(n)
 
 		for range n {
+			ch := make(chan Out)
+
+			go func() {
+				t(in, ch)
+			}()
+
 			go func() {
 				defer wg.Done()
-				for v := range in {
-					out <- fn(v)
+				for v := range ch {
+					out <- v
 				}
 			}()
 		}
@@ -71,23 +61,22 @@ func Chain[T any](tasks ...Task[T, T]) Task[T, T] {
 	return t
 }
 
-// Run starts the task with the given input values and returns the collected output.
-func Run[In, Out any](t Task[In, Out], input ...In) []Out {
-	return RunWithProducer(t, func() <-chan In {
-		ch := make(chan In, len(input))
+// FromValues starts the task with the given input values and returns the collected output.
+func FromValues[In, Out any](t Task[In, Out], input ...In) []Out {
+	ch := make(chan In)
 
+	go func() {
+		defer close(ch)
 		for _, v := range input {
 			ch <- v
 		}
+	}()
 
-		close(ch)
-
-		return ch
-	})
+	return FromChannel(t, ch)
 }
 
-// RunWithProducer starts the task with values from a Producer and returns the collected output.
-func RunWithProducer[In, Out any](t Task[In, Out], p Producer[In]) []Out {
+// FromChannel starts the task with values from a channel and returns the collected output.
+func FromChannel[In, Out any](t Task[In, Out], in <-chan In) []Out {
 	out := make(chan Out)
 
 	var results []Out
@@ -102,7 +91,7 @@ func RunWithProducer[In, Out any](t Task[In, Out], p Producer[In]) []Out {
 		}
 	}()
 
-	t(p(), out)
+	t(in, out)
 	wg.Wait()
 
 	return results
