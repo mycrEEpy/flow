@@ -51,17 +51,36 @@ For longer chains, nest `Pipe` calls:
 pipeline := flow.Pipe(flow.Pipe(parse, transform), encode)
 ```
 
+### Custom producer
+
+Use `RunWithProducer` when inputs come from a channel instead of a slice:
+
+```go
+double := flow.Func(func(v int) int { return v * 2 })
+
+results := flow.RunWithProducer(double, func() <-chan int {
+    ch := make(chan int)
+    go func() {
+        defer close(ch)
+        for i := range 5 {
+            ch <- i
+        }
+    }()
+    return ch
+}) // [0, 2, 4, 6, 8]
+```
+
 ### Concurrent workers
 
 Fan out a function across multiple goroutines:
 
 ```go
-heavy := flow.Concurrent(func(v int) int {
+heavy := flow.ConcurrentFunc(func(v int) int {
     time.Sleep(time.Second)
     return v * 2
 }, 4)
 
-results := flow.Run(heavy, 1, 2, 3, 4) // processed by 4 workers in parallel
+results := flow.Run(heavy, 1, 2, 3, 4) // processed by 4 workers concurrently
 ```
 
 Concurrent tasks can be composed with `Pipe` and `Chain` like any other task.

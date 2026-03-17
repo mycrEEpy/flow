@@ -18,7 +18,7 @@ func TestFunc(t *testing.T) {
 }
 
 func TestConcurrent(t *testing.T) {
-	double := flow.Concurrent[int, int](func(in int) int {
+	double := flow.ConcurrentFunc[int, int](func(in int) int {
 		return in * 2
 	}, 4)
 
@@ -61,4 +61,25 @@ func TestChain(t *testing.T) {
 	result := flow.Run(task, 1, 2, 3, 4, 5)
 
 	assert.Equal(t, []int{36, 72, 108, 144, 180}, result)
+}
+
+func TestRunWithProducer(t *testing.T) {
+	double := flow.Func[int, int](func(in int) int {
+		return in * 2
+	})
+
+	result := flow.RunWithProducer(double, func() <-chan int {
+		ch := make(chan int)
+
+		go func() {
+			defer close(ch)
+			for i := range 5 {
+				ch <- i
+			}
+		}()
+
+		return ch
+	})
+
+	assert.Equal(t, []int{0, 2, 4, 6, 8}, result)
 }

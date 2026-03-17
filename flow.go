@@ -8,6 +8,9 @@ type Task[In, Out any] func(in <-chan In, out chan<- Out)
 // TaskFunc is a function that converts a single value to a result.
 type TaskFunc[In, Out any] func(In) Out
 
+// Producer is a function that returns a channel of values to feed into a pipeline.
+type Producer[T any] func() <-chan T
+
 // Func creates a Task from a TaskFunc.
 func Func[In, Out any](fn TaskFunc[In, Out]) Task[In, Out] {
 	return func(in <-chan In, out chan<- Out) {
@@ -19,8 +22,8 @@ func Func[In, Out any](fn TaskFunc[In, Out]) Task[In, Out] {
 	}
 }
 
-// Concurrent creates a Task that runs n goroutines applying fn concurrently.
-func Concurrent[In, Out any](fn TaskFunc[In, Out], n int) Task[In, Out] {
+// ConcurrentFunc creates a Task from a TaskFunc that runs n goroutines applying fn concurrently.
+func ConcurrentFunc[In, Out any](fn TaskFunc[In, Out], n int) Task[In, Out] {
 	return func(in <-chan In, out chan<- Out) {
 		var wg sync.WaitGroup
 		wg.Add(n)
@@ -70,14 +73,21 @@ func Chain[T any](tasks ...Task[T, T]) Task[T, T] {
 
 // Run starts the task with the given input values and returns the collected output.
 func Run[In, Out any](t Task[In, Out], input ...In) []Out {
-	in := make(chan In, len(input))
+	return RunWithProducer(t, func() <-chan In {
+		ch := make(chan In, len(input))
 
-	for _, v := range input {
-		in <- v
-	}
+		for _, v := range input {
+			ch <- v
+		}
 
-	close(in)
+		close(ch)
 
+		return ch
+	})
+}
+
+// RunWithProducer starts the task with values from a Producer and returns the collected output.
+func RunWithProducer[In, Out any](t Task[In, Out], p Producer[In]) []Out {
 	out := make(chan Out)
 
 	var results []Out
@@ -92,7 +102,7 @@ func Run[In, Out any](t Task[In, Out], input ...In) []Out {
 		}
 	}()
 
-	t(in, out)
+	t(p(), out)
 	wg.Wait()
 
 	return results
