@@ -1,7 +1,5 @@
 package flow
 
-import "slices"
-
 // Logger is the interface used by logging helpers to emit structured log messages.
 type Logger interface {
 	Info(msg string, args ...any)
@@ -18,7 +16,7 @@ func LogEveryN[T any](n int, logger Logger, msg string, args ...any) Task[T, T] 
 			count++
 
 			if count%n == 0 {
-				logger.Info(msg, slices.Concat([]any{"count", count}, args))
+				logger.Info(msg, append([]any{"count", count}, args...)...)
 			}
 
 			out <- v
