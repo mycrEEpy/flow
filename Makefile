@@ -1,2 +1,2 @@
 test:
-	go test -v $(go list ./... | grep -v /examples/)
+	go test -race -v $(go list ./... | grep -v /examples/)
