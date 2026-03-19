@@ -27,14 +27,39 @@ func LogEveryN[T any](n int, logger Logger, msg string, args ...any) Task[T, T] 
 }
 
 // Filter returns a Task that only forwards items for which predicate returns true.
-func Filter[T any](predicate func(T) bool) Task[T, T] {
+// The predicate may also return an error, which will be returned by the Task to abort the pipeline.
+func Filter[T any](predicate func(T) (bool, error)) Task[T, T] {
 	return func(in <-chan T, out chan<- T) error {
 		defer close(out)
 
 		for v := range in {
-			if predicate(v) {
+			ok, err := predicate(v)
+			if err != nil {
+				return err
+			}
+
+			if ok {
 				out <- v
 			}
+		}
+
+		return nil
+	}
+}
+
+// ForEach returns a Task that calls fn for each item and forwards the result.
+// The function may also return an error, which will be returned by the Task to abort the pipeline.
+func ForEach[In, Out any](fn func(in In) (Out, error)) Task[In, Out] {
+	return func(in <-chan In, out chan<- Out) error {
+		defer close(out)
+
+		for v := range in {
+			result, err := fn(v)
+			if err != nil {
+				return err
+			}
+
+			out <- result
 		}
 
 		return nil

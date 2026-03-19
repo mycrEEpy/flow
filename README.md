@@ -102,9 +102,17 @@ pipeline := flow.Pipe(flow.Pipe(parse, transform), encode)
 Filter items in a pipeline with `Filter`:
 
 ```go
-pipeline := flow.Filter(func(v int) bool { return v%2 == 0 })
+pipeline := flow.Filter(func(v int) (bool, error) { return v%2 == 0, nil })
 
 results, err := flow.FromValues(pipeline, 1, 2, 3, 4, 5, 6) // [2, 4, 6]
+```
+
+Apply a function to each item with `ForEach`:
+
+```go
+pipeline := flow.ForEach(func(v int) (string, error) { return fmt.Sprintf("%d", v), nil })
+
+results, err := flow.FromValues(pipeline, 1, 2, 3) // ["1", "2", "3"]
 ```
 
 Log progress every N items with `LogEveryN`:
