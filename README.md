@@ -115,6 +115,33 @@ pipeline := flow.ForEach(func(v int) (string, error) { return fmt.Sprintf("%d", 
 results, err := flow.FromValues(pipeline, 1, 2, 3) // ["1", "2", "3"]
 ```
 
+Duplicate items to a slice with `Append`:
+
+```go
+var collected []int
+pipeline := flow.Append(&collected)
+
+results, err := flow.FromValues(pipeline, 1, 2, 3) // [1, 2, 3]
+// collected == [1, 2, 3]
+```
+
+Duplicate items to a side channel with `Tee`:
+
+```go
+tee := make(chan int, 100)
+pipeline := flow.Tee(tee)
+
+go func() {
+	for v := range tee {
+		fmt.Println(v) // 1, 2, 3
+    }
+}
+}()
+
+results, err := flow.FromValues(pipeline, 1, 2, 3) // [1, 2, 3]
+close(tee)
+```
+
 Log progress every N items with `LogEveryN`:
 
 ```go

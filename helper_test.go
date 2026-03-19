@@ -102,3 +102,54 @@ func TestForEachError(t *testing.T) {
 
 	assert.ErrorIs(t, err, errBoom)
 }
+
+func TestAppend(t *testing.T) {
+	var collected []int
+	task := flow.Append(&collected)
+
+	results, err := flow.FromValues(task, 1, 2, 3)
+
+	require.NoError(t, err)
+	assert.Equal(t, []int{1, 2, 3}, results)
+	assert.Equal(t, []int{1, 2, 3}, collected)
+}
+
+func TestAppendEmpty(t *testing.T) {
+	var collected []int
+	task := flow.Append(&collected)
+
+	results, err := flow.FromValues[int, int](task)
+
+	require.NoError(t, err)
+	assert.Empty(t, results)
+	assert.Empty(t, collected)
+}
+
+func TestTeeEmpty(t *testing.T) {
+	tee := make(chan int, 1)
+	task := flow.Tee(tee)
+
+	results, err := flow.FromValues[int, int](task)
+	close(tee)
+
+	require.NoError(t, err)
+	assert.Empty(t, results)
+	assert.Empty(t, tee)
+}
+
+func TestTee(t *testing.T) {
+	tee := make(chan int, 3)
+	task := flow.Tee(tee)
+
+	results, err := flow.FromValues(task, 1, 2, 3)
+	close(tee)
+
+	require.NoError(t, err)
+	assert.Equal(t, []int{1, 2, 3}, results)
+
+	var teeValues []int
+	for v := range tee {
+		teeValues = append(teeValues, v)
+	}
+	assert.Equal(t, []int{1, 2, 3}, teeValues)
+}

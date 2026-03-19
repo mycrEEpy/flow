@@ -65,3 +65,31 @@ func ForEach[In, Out any](fn func(in In) (Out, error)) Task[In, Out] {
 		return nil
 	}
 }
+
+// Append returns a Task that appends all items to the given slice.
+func Append[T any](s *[]T) Task[T, T] {
+	return func(in <-chan T, out chan<- T) error {
+		defer close(out)
+
+		for v := range in {
+			*s = append(*s, v)
+			out <- v
+		}
+
+		return nil
+	}
+}
+
+// Tee returns a Task that forwards all items to the given channel and the output channel.
+func Tee[T any](tee chan<- T) Task[T, T] {
+	return func(in <-chan T, out chan<- T) error {
+		defer close(out)
+
+		for v := range in {
+			tee <- v
+			out <- v
+		}
+
+		return nil
+	}
+}
