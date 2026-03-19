@@ -51,7 +51,7 @@ heavy := flow.Concurrent(4, func(in <-chan int, out chan<- int) error {
 results, err := flow.FromValues(heavy, 1, 2, 3, 4) // processed by 4 workers concurrently
 ```
 
-### Chaining same types
+### Chain & Pipe
 
 When all tasks share the same type, use `Chain`:
 
@@ -71,8 +71,6 @@ pipeline := flow.Chain(
 
 results, err := flow.FromValues(pipeline, 10) // [22]
 ```
-
-### Chaining different types
 
 Use `Pipe` to connect tasks with different input/output types:
 
@@ -99,33 +97,29 @@ For longer chains, nest `Pipe` calls:
 pipeline := flow.Pipe(flow.Pipe(parse, transform), encode)
 ```
 
-### Channel input
+### Helper functions
 
-Use `FromChannel` when inputs come from a channel instead of a slice:
+Filter items in a pipeline with `Filter`:
 
 ```go
-double := func(in <-chan int, out chan<- int) error {
-    defer close(out)
-	for v := range in { out <- v * 2 }
-    return nil
-}
+pipeline := flow.Filter(func(v int) bool { return v%2 == 0 })
 
-ch := make(chan int)
-go func() {
-    defer close(ch)
-    for i := range 5 {
-        ch <- i
-    }
-}()
+results, err := flow.FromValues(pipeline, 1, 2, 3, 4, 5, 6) // [2, 4, 6]
+```
 
-results, err := flow.FromChannel(double, ch) // [0, 2, 4, 6, 8]
+Log progress every N items with `LogEveryN`:
+
+```go
+pipeline := flow.LogEveryN[int](1000, slog.Default(), "processed items")
+
+results, err := flow.FromSlice(pipeline, veryBigSlice)
 ```
 
 ### Error handling
 
 When a task returns an error, it must still close `out` (use `defer close(out)`).
 This ensures all downstream goroutines drain and terminate — no goroutine leaks.
-The error is propagated through `Pipe`, `Chain`, `Concurrent`, and returned by `FromValues` / `FromChannel`.
+The error is propagated through `Pipe`, `Chain`, `Concurrent`, and returned by `FromValues`, `FromSlice` & `FromChannel`.
 
 ```go
 pipeline := flow.Pipe(
