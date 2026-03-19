@@ -8,23 +8,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type logEntry struct {
+	msg  string
+	args []any
+}
+
 type mockLogger struct {
-	calls []string
+	entries []logEntry
 }
 
 func (l *mockLogger) Info(msg string, args ...any) {
-	l.calls = append(l.calls, msg)
+	l.entries = append(l.entries, logEntry{msg, args})
 }
 
 func TestLogEveryN(t *testing.T) {
 	logger := &mockLogger{}
-	task := flow.LogEveryN[int](3, logger, "progress")
+	task := flow.LogEveryN[int](3, logger, "progress", "extra", "value")
 
 	results, err := flow.FromValues(task, 1, 2, 3, 4, 5, 6)
 
 	require.NoError(t, err)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6}, results)
-	assert.Equal(t, []string{"progress", "progress"}, logger.calls)
+	require.Len(t, logger.entries, 2)
+	assert.Equal(t, "progress", logger.entries[0].msg)
+	assert.Equal(t, []any{"count", 3, "extra", "value"}, logger.entries[0].args)
+	assert.Equal(t, []any{"count", 6, "extra", "value"}, logger.entries[1].args)
 }
 
 func TestFilter(t *testing.T) {
