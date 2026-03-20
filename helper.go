@@ -22,6 +22,8 @@ func LogEveryN[T any](n int, logger Logger, msg string, args ...any) Task[T, T] 
 			out <- v
 		}
 
+		logger.Info(msg, append([]any{"count", count}, args...)...)
+
 		return nil
 	}
 }
