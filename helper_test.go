@@ -25,16 +25,17 @@ func (l *mockLogger) Info(msg string, args ...any) {
 
 func TestLogEveryN(t *testing.T) {
 	logger := &mockLogger{}
-	task := flow.LogEveryN[int](3, logger, "progress", "extra", "value")
+	task := flow.LogEveryN[int](2, logger, "progress", "extra", "value")
 
-	results, err := flow.FromValues(task, 1, 2, 3, 4, 5, 6)
+	results, err := flow.FromValues(task, 1, 2, 3, 4, 5)
 
 	require.NoError(t, err)
-	assert.Equal(t, []int{1, 2, 3, 4, 5, 6}, results)
-	require.Len(t, logger.entries, 2)
+	assert.Equal(t, []int{1, 2, 3, 4, 5}, results)
+	require.Len(t, logger.entries, 3)
 	assert.Equal(t, "progress", logger.entries[0].msg)
-	assert.Equal(t, []any{"count", 3, "extra", "value"}, logger.entries[0].args)
-	assert.Equal(t, []any{"count", 6, "extra", "value"}, logger.entries[1].args)
+	assert.Equal(t, []any{"count", 2, "extra", "value"}, logger.entries[0].args)
+	assert.Equal(t, []any{"count", 4, "extra", "value"}, logger.entries[1].args)
+	assert.Equal(t, []any{"count", 5, "closed", true, "extra", "value"}, logger.entries[2].args)
 }
 
 func TestFilter(t *testing.T) {

@@ -6,6 +6,8 @@ type Logger interface {
 }
 
 // LogEveryN returns a pass-through Task that logs a message every n items processed.
+// The message will be emitted with the given args and additionally with "count" set to the number of items processed.
+// If the input channel is closed, a final message will be emitted with "closed" set to true.
 func LogEveryN[T any](n int, logger Logger, msg string, args ...any) Task[T, T] {
 	return func(in <-chan T, out chan<- T) error {
 		defer close(out)
@@ -22,7 +24,7 @@ func LogEveryN[T any](n int, logger Logger, msg string, args ...any) Task[T, T] 
 			out <- v
 		}
 
-		logger.Info(msg, append([]any{"count", count}, args...)...)
+		logger.Info(msg, append([]any{"count", count, "closed", true}, args...)...)
 
 		return nil
 	}
