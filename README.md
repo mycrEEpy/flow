@@ -5,6 +5,8 @@
 [![Go Build & Test](https://github.com/mycrEEpy/flow/actions/workflows/build.yml/badge.svg)](https://github.com/mycrEEpy/flow/actions/workflows/build.yml)
 [![Go Coverage](https://github.com/mycreepy/flow/wiki/coverage.svg)](https://raw.githack.com/wiki/mycreepy/flow/coverage.html)
 
+![Gopher in with a pipeline](https://i.ibb.co/Mxg1dz5w/go-flow.png)
+
 A Go package for building concurrent data pipelines.
 You provide plain functions — the package handles all the channel wiring, goroutine management, and synchronization.
 
